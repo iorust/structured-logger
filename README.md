@@ -1,8 +1,11 @@
-# structured-logger
+# structured-logger &emsp;
 [![CI](https://github.com/iorust/structured-logger/actions/workflows/ci.yml/badge.svg)](https://github.com/iorust/structured-logger/actions/workflows/ci.yml)
 [![License](http://img.shields.io/badge/license-mit-blue.svg?style=flat-square)](https://raw.githubusercontent.com/iorust/structured-logger/main/LICENSE)
+[![Latest Version](https://img.shields.io/crates/v/structured-logger.svg)](https://crates.io/crates/structured-logger)
+[![Crates.io](https://img.shields.io/crates/d/structured-logger.svg)](https://crates.io/crates/structured-logger)
 
 A logging implementation for the log crate that logs structured values as JSON (CBOR, or any other) into a file, stderr, stdout, or any other.
+Inspired by [std-logger](https://github.com/Thomasdezeeuw/std-logger).
 
 ## Usage
 
@@ -34,9 +37,9 @@ fn main() {
     log::info!(target: "request",
         method = "GET",
         path = "/hello",
-        status = 200 as u16,
+        status = 200_u16,
         start = unix_ms(),
-        elapsed = 10 as u64,
+        elapsed = 10_u64,
         kv = log::as_serde!(kv);
         "",
     );
@@ -51,3 +54,8 @@ struct ContextLog {
 ```
 
 [API documentation]: https://docs.rs/structured-logger
+
+## License
+Copyright © 2023-present [IO Rust](https://github.com/iorust).
+
+ldclabs/cose is licensed under the MIT License.  See [LICENSE](./LICENSE) for the full license text.

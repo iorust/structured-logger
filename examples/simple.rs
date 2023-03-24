@@ -21,9 +21,9 @@ fn main() {
     log::info!(target: "request",
         method = "GET",
         path = "/hello",
-        status = 200 as u16,
+        status = 200_u16,
         start = unix_ms(),
-        elapsed = 10 as u64,
+        elapsed = 10_u64,
         kv = log::as_serde!(kv);
         "",
     );

@@ -1,3 +1,6 @@
+// (c) 2022-present, IO Rust. All rights reserved.
+// See the file LICENSE for licensing terms.
+
 use std::{cell::RefCell, io};
 
 use crate::{Log, Writer};

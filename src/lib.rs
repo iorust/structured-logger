@@ -1,6 +1,11 @@
+// (c) 2022-present, IO Rust. All rights reserved.
+// See the file LICENSE for licensing terms.
+
+//! # Structured Logger
+//!
 //! A logging implementation for the log crate that logs structured values
 //! as JSON (CBOR, or any other) into a file, stderr, stdout, or any other.
-//! Inspired by [std-logger](https://github.com/Thomasdezeeuw/std-logger)
+//! Inspired by [std-logger](https://github.com/Thomasdezeeuw/std-logger).
 //!
 //! This crate provides only a logging implementation. To do actual logging use
 //! the [`log`] crate and it's various macros.
@@ -59,6 +64,11 @@
 //! # Examples
 //!
 //! ```rust
+//! use serde::Serialize;
+//! use std::io::stdout;
+//! use structured_logger::{json::new_json_writer, unix_ms, Logger};
+//!
+//! fn main() {
 //!     // Initialize the logger.
 //!     Logger::new()
 //!         // set a specific writer (format to JSON, write to stdout) for target "request".
@@ -77,13 +87,14 @@
 //!     log::info!(target: "request",
 //!         method = "GET",
 //!         path = "/hello",
-//!         status = 200 as u16,
+//!         status = 200_u16,
 //!         start = unix_ms(),
-//!         elapsed = 10 as u64,
+//!         elapsed = 10_u64,
 //!         kv = log::as_serde!(kv);
 //!         "",
 //!     );
 //!     // {"elapsed":10,"kv":{"uid":"user123","action":"upate_book"},"level":"INFO","message":"","method":"GET","path":"/hello","start":1679655670735,"status":200,"target":"request","timestamp":1679655670735}
+//! }
 //!
 //! #[derive(Serialize)]
 //! struct ContextLog {
@@ -94,6 +105,10 @@
 //!
 //! [`panic_log`]: https://github.com/iorust/structured-logger/blob/main/examples/panic_log.rs
 //! [`log`]: https://crates.io/crates/log
+//!
+
+#![doc(html_root_url = "https://docs.rs/structured-logger/latest")]
+#![allow(clippy::needless_doctest_main)]
 
 use log::{kv::Error, kv::Visitor, Level, LevelFilter, Metadata, Record, SetLoggerError};
 use std::{
@@ -102,9 +117,7 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-/// Re-export log::kv::Key.
 pub use log::kv::Key;
-/// Re-export log::kv::Value.
 pub use log::kv::Value;
 
 /// A type alias for BTreeMap<Key<'a>, Value<'a>>.
