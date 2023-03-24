@@ -1,23 +1,126 @@
+//! A logging implementation for the log crate that logs structured values
+//! as JSON (CBOR, or any other) into a file, stderr, stdout, or any other.
+//! Inspired by [std-logger](https://github.com/Thomasdezeeuw/std-logger)
+//!
+//! This crate provides only a logging implementation. To do actual logging use
+//! the [`log`] crate and it's various macros.
+//!
+//!
+//! # Setting severity
+//!
+//! You can use various environment variables to change the severity (log level)
+//! of the messages to actually log and which to ignore.
+//!
+//! `LOG` and `LOG_LEVEL` can be used to set the severity to a specific value,
+//! see the [`log`]'s package [`LevelFilter`] type for available values.
+//!
+//! ```bash
+//! ## In your shell of your choice:
+//!
+//! ## Set the log severity to only print log messages with info severity or
+//! ## higher, trace and debug messages won't be printed anymore.
+//! $ LOG=info ./my_binary
+//!
+//! ## Set the log severity to only print log messages with warning severity or
+//! ## higher, informational (or lower severity) messages won't be printed
+//! ## anymore.
+//! $ LOG=warn ./my_binary
+//! ```
+//!
+//! Alternatively setting the `TRACE` variable (e.g. `TRACE=1`) sets the
+//! severity to the trace, meaning it will log everything. Setting `DEBUG` will
+//! set the severity to debug.
+//!
+//! ```bash
+//! ## In your shell of your choice:
+//!
+//! ## Enables trace logging.
+//! $ TRACE=1 ./my_binary
+//!
+//! ## Enables debug logging.
+//! $ DEBUG=1 ./my_binary
+//! ```
+//!
+//! If none of these environment variables are found it will default to an
+//! information severity.
+//!
+//! # Crate features
+//!
+//! This crate has three features:
+//! * *log-panic*, enabled by default.
+//!
+//! ## Log-panic feature
+//!
+//! The *log-panic* feature will log all panics using the `error` severity,
+//! rather then using the default panic handler. It will log the panic message
+//! as well as the location and a backtrace, see the log output for an
+//! [`panic_log`] example.
+//!
+//! # Examples
+//!
+//! ```rust
+//!     // Initialize the logger.
+//!     Logger::new()
+//!         // set a specific writer (format to JSON, write to stdout) for target "request".
+//!         .with_target_writer("request", new_json_writer(stdout()))
+//!         .init();
+//!
+//!     let kv = ContextLog {
+//!         uid: "user123".to_string(),
+//!         action: "upate_book".to_string(),
+//!     };
+//!
+//!     log::info!("hello world");
+//!     // {"level":"INFO","message":"hello world","target":"simple","timestamp":1679655670735}
+//!
+//!     // mock request data
+//!     log::info!(target: "request",
+//!         method = "GET",
+//!         path = "/hello",
+//!         status = 200 as u16,
+//!         start = unix_ms(),
+//!         elapsed = 10 as u64,
+//!         kv = log::as_serde!(kv);
+//!         "",
+//!     );
+//!     // {"elapsed":10,"kv":{"uid":"user123","action":"upate_book"},"level":"INFO","message":"","method":"GET","path":"/hello","start":1679655670735,"status":200,"target":"request","timestamp":1679655670735}
+//!
+//! #[derive(Serialize)]
+//! struct ContextLog {
+//!     uid: String,
+//!     action: String,
+//! }
+//! ```
+//!
+//! [`panic_log`]: https://github.com/iorust/structured-logger/blob/main/examples/panic_log.rs
+//! [`log`]: https://crates.io/crates/log
+
 use log::{kv::Error, kv::Visitor, Level, LevelFilter, Metadata, Record, SetLoggerError};
-use std::collections::{BTreeMap, HashMap};
-use std::{env, io};
+use std::{
+    collections::BTreeMap,
+    env, io,
+    time::{SystemTime, UNIX_EPOCH},
+};
 
-/// re-export log::kv::Key and log::kv::Value.
-pub use log::kv::{Key, Value};
+/// Re-export log::kv::Key.
+pub use log::kv::Key;
+/// Re-export log::kv::Value.
+pub use log::kv::Value;
 
-/// Log is a type alias for HashMap<Key<'a>, Value<'a>>.
-pub type Log<'a> = HashMap<Key<'a>, Value<'a>>;
+/// A type alias for BTreeMap<Key<'a>, Value<'a>>.
+/// BTreeMap is used to keep the order of the keys.
+pub type Log<'a> = BTreeMap<Key<'a>, Value<'a>>;
 
-/// Writer is a trait that defines how to write a log.
+/// A trait that defines how to write a log.
 pub trait Writer {
-    /// write_log writes a log to the underlying io::Write instance.
+    /// Writes a structured log to the underlying io::Write instance.
     fn write_log(&self, value: &Log) -> Result<(), io::Error>;
 }
 
-mod json;
-pub use json::{new_json_writer, JSONWriter};
+pub mod json;
+use json::new_json_writer;
 
-/// Logger is a struct that holds the configuration for the logger.
+/// A struct that holds the configuration for the logger.
 pub struct Logger {
     filter: LevelFilter,
     default_writer: Box<dyn Writer>,
@@ -31,25 +134,33 @@ impl Default for Logger {
 }
 
 impl Logger {
-    /// new creates a new Logger with default configuration.
+    /// Returns a new Logger with default configuration.
+    /// The default configuration is:
+    /// - level filter: get from the environment variable by `get_env_level()`.
+    /// - default writer: write to stderr in JSON format.
     pub fn new() -> Self {
         Logger {
-            filter: get_max_level(),
+            filter: get_env_level(),
             default_writer: new_json_writer(io::stderr()),
             writers: BTreeMap::new(),
         }
     }
 
-    /// with_level creates a new Logger with a given level filter.
-    pub fn with_level(level: LevelFilter) -> Self {
+    /// Returns a new Logger with a given level filter.
+    /// `level` is a string that can be parsed to `log::LevelFilter`.
+    /// Such as "OFF", "ERROR", "WARN", "INFO", "DEBUG", "TRACE", ignore ascii case.
+    pub fn with_level(level: &str) -> Self {
         Logger {
-            filter: level,
+            filter: level.parse().unwrap_or(LevelFilter::Info),
             default_writer: new_json_writer(io::stderr()),
             writers: BTreeMap::new(),
         }
     }
 
-    /// with_target_writer creates a new Logger with a given target and writer.
+    /// Returns a new Logger with a given `target` and `writer`.
+    /// `target` is a string that be used as a log target.
+    /// `writer` is a struct that implements the `Writer` trait.
+    /// You can call this method multiple times to add multiple writers.
     pub fn with_target_writer(self, target: &'static str, writer: Box<dyn Writer>) -> Self {
         let mut cfg = Logger {
             filter: self.filter,
@@ -60,7 +171,7 @@ impl Logger {
         cfg
     }
 
-    /// initialize the logger.
+    /// Initialize the logger.
     ///
     /// See the [crate level documentation] for more.
     ///
@@ -97,8 +208,16 @@ impl Logger {
     }
 }
 
-/// Get the maximum log level based on the environment.
-pub fn get_max_level() -> LevelFilter {
+/// Returns the current unix timestamp in milliseconds.
+pub fn unix_ms() -> u64 {
+    let ts = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("system time before Unix epoch");
+    ts.as_millis() as u64
+}
+
+/// Returns the log level from the environment variables.
+pub fn get_env_level() -> LevelFilter {
     for var in &["LOG", "LOG_LEVEL"] {
         if let Ok(level) = env::var(var) {
             if let Ok(level) = level.parse() {
@@ -143,7 +262,7 @@ impl log::Log for InnerLogger {
     fn log(&self, record: &Record) {
         if self.enabled(record.metadata()) {
             let kvs = record.key_values();
-            let mut visitor = KeyValueVisitor(HashMap::new());
+            let mut visitor = KeyValueVisitor(BTreeMap::new());
             kvs.visit(&mut visitor).unwrap();
 
             visitor
@@ -176,6 +295,9 @@ impl log::Log for InnerLogger {
                 }
             }
 
+            visitor
+                .0
+                .insert(Key::from("timestamp"), Value::from(unix_ms()));
             let writer = self.get_writer(record.target());
             writer.write_log(&visitor.0).unwrap();
         }

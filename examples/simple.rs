@@ -1,13 +1,12 @@
-use log;
 use serde::Serialize;
-use std::{io, time::SystemTime, time::UNIX_EPOCH};
-use structured_logger::{new_json_writer, Logger};
+use std::io::stdout;
+use structured_logger::{json::new_json_writer, unix_ms, Logger};
 
 fn main() {
     // Initialize the logger.
     Logger::new()
         // set a specific writer (format to JSON, write to stdout) for target "request".
-        .with_target_writer("request", new_json_writer(io::stdout()))
+        .with_target_writer("request", new_json_writer(stdout()))
         .init();
 
     let kv = ContextLog {
@@ -16,7 +15,7 @@ fn main() {
     };
 
     log::info!("hello world");
-    // {"target":"simple","message":"hello world","level":"INFO"}
+    // {"level":"INFO","message":"hello world","target":"simple","timestamp":1679655670735}
 
     // mock request data
     log::info!(target: "request",
@@ -28,18 +27,11 @@ fn main() {
         kv = log::as_serde!(kv);
         "",
     );
-    // {"method":"GET","target":"request","message":"","path":"/hello","status":200,"level":"INFO","start":1679647263247,"kv":{"uid":"user123","action":"upate_book"},"elapsed":10}
+    // {"elapsed":10,"kv":{"uid":"user123","action":"upate_book"},"level":"INFO","message":"","method":"GET","path":"/hello","start":1679655670735,"status":200,"target":"request","timestamp":1679655670735}
 }
 
 #[derive(Serialize)]
 struct ContextLog {
     uid: String,
     action: String,
-}
-
-fn unix_ms() -> u64 {
-    let ts = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("system time before Unix epoch");
-    ts.as_millis() as u64
 }
