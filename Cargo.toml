@@ -1,0 +1,25 @@
+[package]
+name = "structured-logger"
+version = "0.1.0"
+edition = "2021"
+description   = """
+A logging implementation for the log crate that logs structured values as JSON (CBOR, or any other) into a file, stderr, stdout, or any other.
+"""
+authors       = ["0xzensh <txr1883@gmail.com>"]
+license-file  = "LICENSE"
+documentation = "https://docs.rs/structured-logger"
+repository    = "https://github.com/iorust/structured-logger"
+readme        = "README.md"
+keywords      = ["log", "structured", "json", "stderr", "stdout"]
+include       = ["Cargo.toml", "src/**/*.rs", "README.md", "LICENSE"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+default   = ["log-panic"]
+log-panic = []
+
+[dependencies]
+log = { version = "0.4", features = ["kv_unstable_serde"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

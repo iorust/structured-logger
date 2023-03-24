@@ -1,16 +1,4 @@
-# structured-logger
-[![CI](https://github.com/iorust/structured-logger/actions/workflows/ci.yml/badge.svg)](https://github.com/iorust/structured-logger/actions/workflows/ci.yml)
-[![License](http://img.shields.io/badge/license-mit-blue.svg?style=flat-square)](https://raw.githubusercontent.com/iorust/structured-logger/main/LICENSE)
-
-A logging implementation for the log crate that logs structured values as JSON (CBOR, or any other) into a file, stderr, stdout, or any other.
-
-## Usage
-
-See the [API documentation] for more.
-
-## Example
-
-```rust
+use log;
 use serde::Serialize;
 use std::{io, time::SystemTime, time::UNIX_EPOCH};
 use structured_logger::{new_json_writer, Logger};
@@ -55,6 +43,3 @@ fn unix_ms() -> u64 {
         .expect("system time before Unix epoch");
     ts.as_millis() as u64
 }
-```
-
-[API documentation]: https://docs.rs/structured-logger
