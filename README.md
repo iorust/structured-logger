@@ -1,9 +1,10 @@
 # structured-logger
 
-[![CI](https://github.com/iorust/structured-logger/actions/workflows/ci.yml/badge.svg)](https://github.com/iorust/structured-logger/actions/workflows/ci.yml)
-[![License](http://img.shields.io/badge/license-mit-blue.svg?style=flat-square)](https://raw.githubusercontent.com/iorust/structured-logger/main/LICENSE)
-[![Latest Version](https://img.shields.io/crates/v/structured-logger.svg)](https://crates.io/crates/structured-logger)
+![License](https://img.shields.io/crates/l/structured-logger.svg)
 [![Crates.io](https://img.shields.io/crates/d/structured-logger.svg)](https://crates.io/crates/structured-logger)
+[![CI](https://github.com/iorust/structured-logger/actions/workflows/ci.yml/badge.svg)](https://github.com/iorust/structured-logger/actions/workflows/ci.yml)
+[![Docs.rs](https://img.shields.io/docsrs/structured-logger?label=docs.rs)](https://docs.rs/structured-logger)
+[![Latest Version](https://img.shields.io/crates/v/structured-logger.svg)](https://crates.io/crates/structured-logger)
 
 A logging implementation for the log crate that logs structured values as JSON (CBOR, or any other) into a file, stderr, stdout, or any other.
 Inspired by [std-logger](https://github.com/Thomasdezeeuw/std-logger).
@@ -83,4 +84,5 @@ struct ContextLog {
 ## License
 Copyright © 2023-present [IO Rust](https://github.com/iorust).
 
-iorust/structured-logger is licensed under the MIT License.  See [LICENSE](./LICENSE) for the full license text.
+`iorust/structured-logger` is licensed under either of <a href="LICENSE-APACHE">Apache License, Version
+2.0</a> or <a href="LICENSE">MIT license</a> at your option.
