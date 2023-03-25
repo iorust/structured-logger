@@ -10,69 +10,38 @@
 //! This crate provides only a logging implementation. To do actual logging use
 //! the [`log`] crate and it's various macros.
 //!
-//!
-//! # Setting severity
-//!
-//! You can use various environment variables to change the severity (log level)
-//! of the messages to actually log and which to ignore.
-//!
-//! `LOG` and `LOG_LEVEL` can be used to set the severity to a specific value,
-//! see the [`log`]'s package [`LevelFilter`] type for available values.
-//!
-//! ```bash
-//! ## In your shell of your choice:
-//!
-//! ## Set the log severity to only print log messages with info severity or
-//! ## higher, trace and debug messages won't be printed anymore.
-//! $ LOG=info ./my_binary
-//!
-//! ## Set the log severity to only print log messages with warning severity or
-//! ## higher, informational (or lower severity) messages won't be printed
-//! ## anymore.
-//! $ LOG=warn ./my_binary
-//! ```
-//!
-//! Alternatively setting the `TRACE` variable (e.g. `TRACE=1`) sets the
-//! severity to the trace, meaning it will log everything. Setting `DEBUG` will
-//! set the severity to debug.
-//!
-//! ```bash
-//! ## In your shell of your choice:
-//!
-//! ## Enables trace logging.
-//! $ TRACE=1 ./my_binary
-//!
-//! ## Enables debug logging.
-//! $ DEBUG=1 ./my_binary
-//! ```
-//!
-//! If none of these environment variables are found it will default to an
-//! information severity.
-//!
-//! # Crate features
+//! ## Crate features
 //!
 //! This crate has three features:
-//! * *log-panic*, enabled by default.
+//! * `log-panic`, enabled by default.
 //!
-//! ## Log-panic feature
+//! ### Log-panic feature
 //!
-//! The *log-panic* feature will log all panics using the `error` severity,
+//! The `log-panic` feature will log all panics using the `error` severity,
 //! rather then using the default panic handler. It will log the panic message
 //! as well as the location and a backtrace, see the log output for an
 //! [`panic_log`] example.
 //!
-//! # Examples
+//! ## Examples
 //!
 //! ```rust
 //! use serde::Serialize;
-//! use std::io::stdout;
+//! use std::{fs::File, io::stdout};
 //! use structured_logger::{json::new_json_writer, unix_ms, Logger};
 //!
 //! fn main() {
 //!     // Initialize the logger.
+//!     let log_file = File::options()
+//!         .create(true)
+//!         .append(true)
+//!         .open("app.log")
+//!         .unwrap();
+//!     // Logger::with_level("debug")
 //!     Logger::new()
-//!         // set a specific writer (format to JSON, write to stdout) for target "request".
-//!         .with_target_writer("request", new_json_writer(stdout()))
+//!         // set a specific writer (format to JSON, write to stdout) for target "api".
+//!         .with_target_writer("api", new_json_writer(stdout()))
+//!         // set a specific writer (format to JSON, write to app.log file) for target "file".
+//!         .with_target_writer("file", new_json_writer(log_file))
 //!         .init();
 //!
 //!     let kv = ContextLog {
@@ -81,10 +50,10 @@
 //!     };
 //!
 //!     log::info!("hello world");
-//!     // {"level":"INFO","message":"hello world","target":"simple","timestamp":1679655670735}
+//!     // This log will be written to stderr (default writer):
+//!     // {"level":"INFO","message":"hello world","target":"simple","timestamp":1679745592127}
 //!
-//!     // mock request data
-//!     log::info!(target: "request",
+//!     log::info!(target: "api",
 //!         method = "GET",
 //!         path = "/hello",
 //!         status = 200_u16,
@@ -93,7 +62,20 @@
 //!         kv = log::as_serde!(kv);
 //!         "",
 //!     );
-//!     // {"elapsed":10,"kv":{"uid":"user123","action":"upate_book"},"level":"INFO","message":"","method":"GET","path":"/hello","start":1679655670735,"status":200,"target":"request","timestamp":1679655670735}
+//!     // This log will be written to stdout:
+//!     // {"elapsed":10,"kv":{"uid":"user123","action":"upate_book"},"level":"INFO","message":"","method":"GET","path":"/hello","start":1679745592127,"status":200,"target":"api","timestamp":1679745592127}
+//!
+//!     log::info!(target: "file",
+//!         method = "GET",
+//!         path = "/hello",
+//!         status = 200_u16,
+//!         start = unix_ms(),
+//!         elapsed = 10_u64,
+//!         kv = log::as_serde!(kv);
+//!         "",
+//!     );
+//!     // This log will be written to file "app.log":
+//!     // {"elapsed":10,"kv":{"uid":"user123","action":"upate_book"},"level":"INFO","message":"","method":"GET","path":"/hello","start":1679745592127,"status":200,"target":"file","timestamp":1679745592127}
 //! }
 //!
 //! #[derive(Serialize)]
@@ -133,7 +115,7 @@ pub trait Writer {
 pub mod json;
 use json::new_json_writer;
 
-/// A struct that holds the configuration for the logger.
+/// A struct to initialize the logger.
 pub struct Logger {
     filter: LevelFilter,
     default_writer: Box<dyn Writer>,

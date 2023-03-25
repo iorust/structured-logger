@@ -1,6 +1,6 @@
 [package]
 name = "structured-logger"
-version = "0.3.0"
+version = "0.3.1"
 edition = "2021"
 description   = """
 A logging implementation for the log crate that logs structured values as JSON (CBOR, or any other) into a file, stderr, stdout, or any other.
