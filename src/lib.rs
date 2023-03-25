@@ -110,19 +110,19 @@
 #![doc(html_root_url = "https://docs.rs/structured-logger/latest")]
 #![allow(clippy::needless_doctest_main)]
 
-use log::{kv::Error, kv::Visitor, Level, LevelFilter, Metadata, Record, SetLoggerError};
+use log::{
+    kv::Error, kv::Key, kv::Value, kv::Visitor, Level, LevelFilter, Metadata, Record,
+    SetLoggerError,
+};
 use std::{
     collections::BTreeMap,
     env, io,
     time::{SystemTime, UNIX_EPOCH},
 };
 
-pub use log::kv::Key;
-pub use log::kv::Value;
-
 /// A type alias for BTreeMap<Key<'a>, Value<'a>>.
 /// BTreeMap is used to keep the order of the keys.
-pub type Log<'a> = BTreeMap<Key<'a>, Value<'a>>;
+type Log<'a> = BTreeMap<Key<'a>, Value<'a>>;
 
 /// A trait that defines how to write a log.
 pub trait Writer {

@@ -58,4 +58,4 @@ struct ContextLog {
 ## License
 Copyright © 2023-present [IO Rust](https://github.com/iorust).
 
-ldclabs/cose is licensed under the MIT License.  See [LICENSE](./LICENSE) for the full license text.
+iorust/structured-logger is licensed under the MIT License.  See [LICENSE](./LICENSE) for the full license text.
