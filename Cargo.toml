@@ -1,6 +1,6 @@
 [package]
 name = "structured-logger"
-version = "0.3.2"
+version = "0.3.3"
 edition = "2021"
 description   = """
 A logging implementation for the log crate that logs structured values as JSON (CBOR, or any other) into a file, stderr, stdout, or any other.
@@ -23,3 +23,7 @@ log-panic = []
 log = { version = "0.4", features = ["kv_unstable_serde"], optional = false, default-features = false }
 serde = { version = "1", features = ["derive"], optional = false, default-features = false }
 serde_json = { version = "1", features = ["std"], optional = false, default-features = false }
+parking_lot = { version = "0.12", optional = false }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full"] }

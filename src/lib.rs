@@ -329,7 +329,7 @@ fn log_panic(info: &std::panic::PanicInfo<'_>) {
 
     let _ = record
         .level(log::Level::Error)
-        .target("panic2")
+        .target("panic")
         .key_values(&key_values);
 
     if let Some(location) = info.location() {
@@ -345,12 +345,32 @@ fn log_panic(info: &std::panic::PanicInfo<'_>) {
     );
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tokio::task::JoinSet;
 
-//     #[test]
-//     fn it_works() {
-//         assert_eq!(4, 4);
-//     }
-// }
+    #[tokio::test(flavor = "multi_thread", worker_threads = 3)]
+    async fn multiple_threads_works() {
+        Logger::new().init();
+
+        let mut set = JoinSet::new();
+
+        for i in 0..1000 {
+            set.spawn(async move {
+                log::info!("hello {}", i);
+                i
+            });
+        }
+
+        let mut seen = [false; 1000];
+        while let Some(res) = set.join_next().await {
+            let idx = res.unwrap();
+            seen[idx] = true;
+        }
+
+        for i in 0..1000 {
+            assert!(seen[i]);
+        }
+    }
+}
