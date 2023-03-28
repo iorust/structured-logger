@@ -1,10 +1,11 @@
-// (c) 2022-present, IO Rust. All rights reserved.
+// (c) 2023-present, IO Rust. All rights reserved.
 // See the file LICENSE for licensing terms.
 
 //! # Structured Logger
 //!
-//! A logging implementation for the log crate that logs structured values
+//! A logging implementation for the [`log`] crate that logs structured values
 //! as JSON (CBOR, or any other) into a file, stderr, stdout, or any other.
+//! To initialize the logger use [`Builder`].
 //! Inspired by [std-logger](https://github.com/Thomasdezeeuw/std-logger).
 //!
 //! This crate provides only a logging implementation. To do actual logging use
@@ -27,21 +28,23 @@
 //! ```rust
 //! use serde::Serialize;
 //! use std::{fs::File, io::stdout};
-//! use structured_logger::{json::new_json_writer, unix_ms, Logger};
+//! use structured_logger::{json::new_writer, unix_ms, Builder};
 //!
 //! fn main() {
 //!     // Initialize the logger.
+//!     // Optional: create a file to write logs to.
 //!     let log_file = File::options()
 //!         .create(true)
 //!         .append(true)
 //!         .open("app.log")
 //!         .unwrap();
-//!     // Logger::with_level("debug")
-//!     Logger::new()
-//!         // set a specific writer (format to JSON, write to stdout) for target "api".
-//!         .with_target_writer("api", new_json_writer(stdout()))
-//!         // set a specific writer (format to JSON, write to app.log file) for target "file".
-//!         .with_target_writer("file", new_json_writer(log_file))
+//!
+//!     // Builder::with_level("debug")
+//!     Builder::new()
+//!         // Optional: set a specific writer (format to JSON, write to stdout) for target "api".
+//!         .with_target_writer("api", new_writer(stdout()))
+//!         // Optional: set a specific writer (format to JSON, write to app.log file) for target "file".
+//!         .with_target_writer("file", new_writer(log_file))
 //!         .init();
 //!
 //!     let kv = ContextLog {
@@ -112,31 +115,32 @@ pub trait Writer {
     fn write_log(&self, value: &Log) -> Result<(), io::Error>;
 }
 
+pub mod async_json;
 pub mod json;
-use json::new_json_writer;
+use json::new_writer;
 
 /// A struct to initialize the logger.
-pub struct Logger {
+pub struct Builder {
     filter: LevelFilter,
     default_writer: Box<dyn Writer>,
     writers: BTreeMap<&'static str, Box<dyn Writer>>,
 }
 
-impl Default for Logger {
+impl Default for Builder {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl Logger {
+impl Builder {
     /// Returns a new Logger with default configuration.
     /// The default configuration is:
     /// - level filter: get from the environment variable by `get_env_level()`.
     /// - default writer: write to stderr in JSON format.
     pub fn new() -> Self {
-        Logger {
+        Builder {
             filter: get_env_level(),
-            default_writer: new_json_writer(io::stderr()),
+            default_writer: new_writer(io::stderr()),
             writers: BTreeMap::new(),
         }
     }
@@ -145,9 +149,9 @@ impl Logger {
     /// `level` is a string that can be parsed to `log::LevelFilter`.
     /// Such as "OFF", "ERROR", "WARN", "INFO", "DEBUG", "TRACE", ignore ascii case.
     pub fn with_level(level: &str) -> Self {
-        Logger {
+        Builder {
             filter: level.parse().unwrap_or(LevelFilter::Info),
-            default_writer: new_json_writer(io::stderr()),
+            default_writer: new_writer(io::stderr()),
             writers: BTreeMap::new(),
         }
     }
@@ -157,7 +161,7 @@ impl Logger {
     /// `writer` is a struct that implements the `Writer` trait.
     /// You can call this method multiple times to add multiple writers.
     pub fn with_target_writer(self, target: &'static str, writer: Box<dyn Writer>) -> Self {
-        let mut cfg = Logger {
+        let mut cfg = Builder {
             filter: self.filter,
             default_writer: self.default_writer,
             writers: self.writers,
@@ -174,7 +178,7 @@ impl Logger {
     ///
     /// # Panics
     ///
-    /// This will panic if the logger fails to initialize. Use [`Logger::try_init`] if
+    /// This will panic if the logger fails to initialize. Use [`Builder::try_init`] if
     /// you want to handle the error yourself.
     pub fn init(self) {
         self.try_init()
@@ -183,13 +187,13 @@ impl Logger {
 
     /// Try to initialize the logger.
     ///
-    /// Unlike [`Logger::init`] this doesn't panic when the logger fails to initialize.
+    /// Unlike [`Builder::init`] this doesn't panic when the logger fails to initialize.
     /// See the [crate level documentation] for more.
     ///
     /// [`init`]: fn.init.html
     /// [crate level documentation]: index.html
     pub fn try_init(self) -> Result<(), SetLoggerError> {
-        let logger = Box::new(InnerLogger {
+        let logger = Box::new(Logger {
             filter: self.filter,
             default_writer: self.default_writer,
             writers: self.writers,
@@ -230,13 +234,13 @@ pub fn get_env_level() -> LevelFilter {
     }
 }
 
-struct InnerLogger {
+struct Logger {
     filter: LevelFilter,
     default_writer: Box<dyn Writer>,
     writers: BTreeMap<&'static str, Box<dyn Writer>>,
 }
 
-impl InnerLogger {
+impl Logger {
     fn get_writer(&self, target: &str) -> &dyn Writer {
         if let Some(writer) = self.writers.get(target) {
             writer.as_ref()
@@ -246,10 +250,10 @@ impl InnerLogger {
     }
 }
 
-unsafe impl Sync for InnerLogger {}
-unsafe impl Send for InnerLogger {}
+unsafe impl Sync for Logger {}
+unsafe impl Send for Logger {}
 
-impl log::Log for InnerLogger {
+impl log::Log for Logger {
     fn enabled(&self, metadata: &Metadata) -> bool {
         self.filter >= metadata.level()
     }
@@ -352,7 +356,7 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 3)]
     async fn multiple_threads_works() {
-        Logger::new().init();
+        Builder::new().init();
 
         let mut set = JoinSet::new();
 

@@ -15,27 +15,30 @@ See the [API documentation] for more.
 
 ## Example
 
-Log panics example: https://github.com/iorust/structured-logger/blob/main/examples/panic_log.rs
+* Log panics example: https://github.com/iorust/structured-logger/blob/main/examples/panic_log.rs
+* Async log example: https://github.com/iorust/structured-logger/blob/main/examples/async_log.rs
 
 Simple example:
 ```rust
 use serde::Serialize;
 use std::{fs::File, io::stdout};
-use structured_logger::{json::new_json_writer, unix_ms, Logger};
+use structured_logger::{json::new_writer, unix_ms, Builder};
 
 fn main() {
     // Initialize the logger.
+    // Optional: create a file to write logs to.
     let log_file = File::options()
         .create(true)
         .append(true)
         .open("app.log")
         .unwrap();
 
-    Logger::new()
-        // set a specific writer (format to JSON, write to stdout) for target "api".
-        .with_target_writer("api", new_json_writer(stdout()))
-        // set a specific writer (format to JSON, write to app.log file) for target "file".
-        .with_target_writer("file", new_json_writer(log_file))
+    // Builder::with_level("debug")
+    Builder::new()
+        // Optional: set a specific writer (format to JSON, write to stdout) for target "api".
+        .with_target_writer("api", new_writer(stdout()))
+        // Optional: set a specific writer (format to JSON, write to app.log file) for target "file".
+        .with_target_writer("file", new_writer(log_file))
         .init();
 
     let kv = ContextLog {

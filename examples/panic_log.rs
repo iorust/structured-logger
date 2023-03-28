@@ -1,10 +1,9 @@
-#[cfg(feature = "log-panic")]
 fn main() {
     use log::info;
-    use structured_logger::Logger;
+    use structured_logger::Builder;
 
     // Initialize the logger.
-    Logger::new().init();
+    Builder::new().init();
 
     info!("going to panic in a moment");
     // {"level":"INFO","message":"going to panic in a moment","target":"panic_log","timestamp":1679655719809}
