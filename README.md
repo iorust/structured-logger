@@ -6,12 +6,13 @@
 [![Docs.rs](https://img.shields.io/docsrs/structured-logger?label=docs.rs)](https://docs.rs/structured-logger)
 [![Latest Version](https://img.shields.io/crates/v/structured-logger.svg)](https://crates.io/crates/structured-logger)
 
-A logging implementation for the log crate that logs structured values as JSON (CBOR, or any other) into a file, stderr, stdout, or any other.
-Inspired by [std-logger](https://github.com/Thomasdezeeuw/std-logger).
+A logging implementation for the log crate that logs structured values either synchronous or asynchronous, as JSON, CBOR, or any other format, into a file, stderr, stdout, or any other destination.
+
+It is inspired by [std-logger](https://github.com/Thomasdezeeuw/std-logger).
 
 ## Usage
 
-See the [API documentation] for more.
+See examples and the [API documentation] for more.
 
 ## Example
 

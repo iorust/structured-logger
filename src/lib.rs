@@ -4,9 +4,10 @@
 //! # Structured Logger
 //!
 //! A logging implementation for the [`log`] crate that logs structured values
-//! as JSON (CBOR, or any other) into a file, stderr, stdout, or any other.
-//! To initialize the logger use [`Builder`].
-//! Inspired by [std-logger](https://github.com/Thomasdezeeuw/std-logger).
+//! either synchronous or asynchronous, as JSON, CBOR, or any other format,
+//! into a file, stderr, stdout, or any other destination.
+//! To initialize the logger use the [`Builder`] struct.
+//! It is inspired by [std-logger](https://github.com/Thomasdezeeuw/std-logger).
 //!
 //! This crate provides only a logging implementation. To do actual logging use
 //! the [`log`] crate and it's various macros.
@@ -25,6 +26,10 @@
 //!
 //! ## Examples
 //!
+//! * Log panics example: <https://github.com/iorust/structured-logger/blob/main/examples/panic_log.rs>
+//! * Async log example: <https://github.com/iorust/structured-logger/blob/main/examples/async_log.rs>
+//!
+//! Muilti writers example:
 //! ```rust
 //! use serde::Serialize;
 //! use std::{fs::File, io::stdout};
@@ -105,14 +110,18 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-/// A type alias for BTreeMap<Key<'a>, Value<'a>>.
-/// BTreeMap is used to keep the order of the keys.
-type Log<'a> = BTreeMap<Key<'a>, Value<'a>>;
+// /// A type alias for BTreeMap<Key<'a>, Value<'a>>.
+// /// BTreeMap is used to keep the order of the keys.
+// type Log<'a> = BTreeMap<Key<'a>, Value<'a>>;
 
-/// A trait that defines how to write a log.
+/// A trait that defines how to write a log. You can implement this trait for your custom formatting and writing destination.
+///
+/// Implementation examples:
+/// * <https://github.com/iorust/structured-logger/blob/main/src/json.rs>
+/// * <https://github.com/iorust/structured-logger/blob/main/src/async_json.rs>
 pub trait Writer {
     /// Writes a structured log to the underlying io::Write instance.
-    fn write_log(&self, value: &Log) -> Result<(), io::Error>;
+    fn write_log(&self, value: &BTreeMap<Key, Value>) -> Result<(), io::Error>;
 }
 
 pub mod async_json;
@@ -315,7 +324,7 @@ impl log::Log for Logger {
     fn flush(&self) {}
 }
 
-struct KeyValueVisitor<'kvs>(Log<'kvs>);
+struct KeyValueVisitor<'kvs>(BTreeMap<Key<'kvs>, Value<'kvs>>);
 
 impl<'kvs> Visitor<'kvs> for KeyValueVisitor<'kvs> {
     fn visit_pair(&mut self, key: Key<'kvs>, value: Value<'kvs>) -> Result<(), Error> {

@@ -4,16 +4,16 @@
 //! # Sync JSON Writer Implementation
 //!
 //! A [`Writer`] implementation that logs structured values
-//! synchronous as JSON into a file, stderr, stdout, or any other.
-//! To create a `Box<dyn Writer>` use [`new_writer`].
+//! synchronous as JSON into a file, stderr, stdout, or any other destination.
+//! To create a `Box<dyn Writer>` use the [`new_writer`] function.
 //!
 //! Example: <https://github.com/iorust/structured-logger/blob/main/examples/simple.rs>
 //!
 
 use parking_lot::Mutex;
-use std::{cell::RefCell, io, io::Write};
+use std::{cell::RefCell, collections::BTreeMap, io, io::Write};
 
-use crate::{unix_ms, Log, Writer};
+use crate::{unix_ms, Key, Value, Writer};
 /// A Writer implementation that writes logs in JSON format.
 pub struct JSONWriter<W: Write + Sync + Send + 'static>(Mutex<RefCell<Box<W>>>);
 
@@ -26,7 +26,7 @@ impl<W: Write + Sync + Send + 'static> JSONWriter<W> {
 
 /// Implements Writer trait for JSONWriter.
 impl<W: Write + Sync + Send + 'static> Writer for JSONWriter<W> {
-    fn write_log(&self, value: &Log) -> Result<(), io::Error> {
+    fn write_log(&self, value: &BTreeMap<Key, Value>) -> Result<(), io::Error> {
         let mut buf = Vec::with_capacity(256);
         serde_json::to_writer(&mut buf, value).map_err(io::Error::from)?;
         // must write the LINE FEED character.
@@ -46,7 +46,7 @@ impl<W: Write + Sync + Send + 'static> Writer for JSONWriter<W> {
     }
 }
 
-/// Creates a new `Box<dyn Writer>` instance with JSONWriter for a given std::io::Write instance.
+/// Creates a new `Box<dyn Writer>` instance with the JSONWriter for a given std::io::Write instance.
 pub fn new_writer<W: Write + Sync + Send + 'static>(w: W) -> Box<dyn Writer> {
     Box::new(JSONWriter::new(w))
 }

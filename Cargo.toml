@@ -1,9 +1,9 @@
 [package]
 name = "structured-logger"
-version = "0.4.0"
+version = "0.4.1"
 edition = "2021"
 description   = """
-A logging implementation for the log crate that logs structured values as JSON (CBOR, or any other) into a file, stderr, stdout, or any other.
+A logging implementation for the log crate that logs structured values either synchronous or asynchronous, as JSON, CBOR, or any other format, into a file, stderr, stdout, or any other destination.
 """
 authors       = ["0xzensh <txr1883@gmail.com>"]
 license       = "MIT OR Apache-2.0"
