@@ -248,6 +248,48 @@ impl Logger {
             self.default_writer.as_ref()
         }
     }
+
+    fn try_log(&self, record: &Record) -> Result<(), io::Error> {
+        let kvs = record.key_values();
+        let mut visitor = KeyValueVisitor(BTreeMap::new());
+        let _ = kvs.visit(&mut visitor);
+
+        visitor
+            .0
+            .insert(Key::from("target"), Value::from(record.target()));
+
+        let args = record.args();
+        let msg: String;
+        if let Some(msg) = args.as_str() {
+            visitor.0.insert(Key::from("message"), Value::from(msg));
+        } else {
+            msg = args.to_string();
+            visitor.0.insert(Key::from("message"), Value::from(&msg));
+        }
+
+        let level = record.level();
+        visitor
+            .0
+            .insert(Key::from("level"), Value::from(level.as_str()));
+
+        if level <= Level::Warn {
+            if let Some(val) = record.module_path() {
+                visitor.0.insert(Key::from("module"), Value::from(val));
+            }
+            if let Some(val) = record.file() {
+                visitor.0.insert(Key::from("file"), Value::from(val));
+            }
+            if let Some(val) = record.line() {
+                visitor.0.insert(Key::from("line"), Value::from(val));
+            }
+        }
+
+        visitor
+            .0
+            .insert(Key::from("timestamp"), Value::from(unix_ms()));
+        self.get_writer(record.target()).write_log(&visitor.0)?;
+        Ok(())
+    }
 }
 
 unsafe impl Sync for Logger {}
@@ -260,45 +302,13 @@ impl log::Log for Logger {
 
     fn log(&self, record: &Record) {
         if self.enabled(record.metadata()) {
-            let kvs = record.key_values();
-            let mut visitor = KeyValueVisitor(BTreeMap::new());
-            kvs.visit(&mut visitor).unwrap();
-
-            visitor
-                .0
-                .insert(Key::from("target"), Value::from(record.target()));
-
-            let args = record.args();
-            let msg: String;
-            if let Some(msg) = args.as_str() {
-                visitor.0.insert(Key::from("message"), Value::from(msg));
-            } else {
-                msg = args.to_string();
-                visitor.0.insert(Key::from("message"), Value::from(&msg));
+            if let Err(err) = self.try_log(record) {
+                // should never happen, but if it does, we log it.
+                eprintln!(
+                    "{{\"level\":\"ERROR\",\"message\":\"failed to write log: {}\",\"target\":\"Logger\",\"timestamp\":{}}}",
+                     err, unix_ms(),
+                );
             }
-
-            let level = record.level();
-            visitor
-                .0
-                .insert(Key::from("level"), Value::from(level.as_str()));
-
-            if level <= Level::Warn {
-                if let Some(val) = record.module_path() {
-                    visitor.0.insert(Key::from("module"), Value::from(val));
-                }
-                if let Some(val) = record.file() {
-                    visitor.0.insert(Key::from("file"), Value::from(val));
-                }
-                if let Some(val) = record.line() {
-                    visitor.0.insert(Key::from("line"), Value::from(val));
-                }
-            }
-
-            visitor
-                .0
-                .insert(Key::from("timestamp"), Value::from(unix_ms()));
-            let writer = self.get_writer(record.target());
-            writer.write_log(&visitor.0).unwrap();
         }
     }
 

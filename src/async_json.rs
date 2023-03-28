@@ -13,7 +13,7 @@
 use std::{io, io::Write, pin::Pin, sync::Arc};
 use tokio::{io::AsyncWrite, sync::Mutex};
 
-use crate::{Log, Writer};
+use crate::{unix_ms, Log, Writer};
 
 /// A Writer implementation that writes logs asynchronous in JSON format.
 pub struct AsyncJSONWriter<W: AsyncWrite + Sync + Send + 'static>(Arc<Mutex<Pin<Box<W>>>>);
@@ -28,8 +28,10 @@ impl<W: AsyncWrite + Sync + Send + 'static> AsyncJSONWriter<W> {
 /// Implements Writer trait for AsyncJSONWriter.
 impl<W: AsyncWrite + Sync + Send + 'static> Writer for AsyncJSONWriter<W> {
     fn write_log(&self, value: &Log) -> Result<(), io::Error> {
-        let mut buf = Vec::with_capacity(150);
+        let mut buf = Vec::with_capacity(256);
         serde_json::to_writer(&mut buf, value).map_err(io::Error::from)?;
+        // must write the LINE FEED character.
+
         buf.write_all(b"\n").map_err(io::Error::from)?;
 
         let w = self.0.clone();
@@ -38,7 +40,11 @@ impl<W: AsyncWrite + Sync + Send + 'static> Writer for AsyncJSONWriter<W> {
 
             let mut w = w.lock().await;
             if let Err(err) = w.as_mut().write_all(&buf).await {
-                log::error!(target: "AsyncJSONWriter", "failed to write log: {}", err)
+                // should never happen, but if it does, we log it.
+                eprintln!(
+                    "{{\"level\":\"ERROR\",\"message\":\"failed to write log: {}\",\"target\":\"AsyncJSONWriter\",\"timestamp\":{}}}",
+                    err, unix_ms(),
+                );
             }
         });
         Ok(())

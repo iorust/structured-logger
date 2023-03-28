@@ -11,13 +11,13 @@
 //!
 
 use parking_lot::Mutex;
-use std::{cell::RefCell, io};
+use std::{cell::RefCell, io, io::Write};
 
-use crate::{Log, Writer};
+use crate::{unix_ms, Log, Writer};
 /// A Writer implementation that writes logs in JSON format.
-pub struct JSONWriter<W: io::Write + Sync + Send + 'static>(Mutex<RefCell<Box<W>>>);
+pub struct JSONWriter<W: Write + Sync + Send + 'static>(Mutex<RefCell<Box<W>>>);
 
-impl<W: io::Write + Sync + Send + 'static> JSONWriter<W> {
+impl<W: Write + Sync + Send + 'static> JSONWriter<W> {
     /// Creates a new JSONWriter instance.
     pub fn new(w: W) -> Self {
         Self(Mutex::new(RefCell::new(Box::new(w))))
@@ -25,20 +25,28 @@ impl<W: io::Write + Sync + Send + 'static> JSONWriter<W> {
 }
 
 /// Implements Writer trait for JSONWriter.
-impl<W: io::Write + Sync + Send + 'static> Writer for JSONWriter<W> {
+impl<W: Write + Sync + Send + 'static> Writer for JSONWriter<W> {
     fn write_log(&self, value: &Log) -> Result<(), io::Error> {
-        let w = self.0.lock();
-        serde_json::to_writer(w.borrow_mut().as_mut(), value).map_err(io::Error::from)?;
+        let mut buf = Vec::with_capacity(256);
+        serde_json::to_writer(&mut buf, value).map_err(io::Error::from)?;
         // must write the LINE FEED character.
-        w.borrow_mut()
-            .as_mut()
-            .write_all(b"\n")
-            .map_err(io::Error::from)?;
+        buf.write_all(b"\n").map_err(io::Error::from)?;
+
+        let w = self.0.lock();
+        if let Ok(mut w) = w.try_borrow_mut() {
+            w.as_mut().write_all(&buf).map_err(io::Error::from)?;
+        } else {
+            // should never happen, but if it does, we log it.
+            eprintln!(
+                "{{\"level\":\"ERROR\",\"message\":\"failed to write log: writer already borrowed\",\"target\":\"JSONWriter\",\"timestamp\":{}}}",
+                unix_ms(),
+            );
+        }
         Ok(())
     }
 }
 
 /// Creates a new `Box<dyn Writer>` instance with JSONWriter for a given std::io::Write instance.
-pub fn new_writer<W: io::Write + Sync + Send + 'static>(w: W) -> Box<dyn Writer> {
+pub fn new_writer<W: Write + Sync + Send + 'static>(w: W) -> Box<dyn Writer> {
     Box::new(JSONWriter::new(w))
 }
