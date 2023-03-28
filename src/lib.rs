@@ -191,7 +191,7 @@ impl Builder {
     /// you want to handle the error yourself.
     pub fn init(self) {
         self.try_init()
-            .unwrap_or_else(|err| panic!("failed to initialize the logger: {err}"));
+            .unwrap_or_else(|err| panic!("failed to initialize the logger: {}", err));
     }
 
     /// Try to initialize the logger.
