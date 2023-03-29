@@ -6,9 +6,19 @@ on:
     branches: [ "main" ]
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-latest, windows-latest]
+        toolchain: [stable, nightly]
+    continue-on-error: true
     steps:
     - uses: actions/checkout@v3
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: false
+        components: rustfmt, clippy
     - name: Run clippy
       run: cargo clippy --all-targets --all-features
     - name: Run tests

@@ -2,6 +2,7 @@
 
 ![License](https://img.shields.io/crates/l/structured-logger.svg)
 [![Crates.io](https://img.shields.io/crates/d/structured-logger.svg)](https://crates.io/crates/structured-logger)
+[![Codecov](https://codecov.io/gh/iorust/structured-logger/branch/main/graph/badge.svg)](https://codecov.io/gh/iorust/structured-logger)
 [![CI](https://github.com/iorust/structured-logger/actions/workflows/ci.yml/badge.svg)](https://github.com/iorust/structured-logger/actions/workflows/ci.yml)
 [![Docs.rs](https://img.shields.io/docsrs/structured-logger?label=docs.rs)](https://docs.rs/structured-logger)
 [![Latest Version](https://img.shields.io/crates/v/structured-logger.svg)](https://crates.io/crates/structured-logger)

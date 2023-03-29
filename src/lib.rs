@@ -165,6 +165,15 @@ impl Builder {
         }
     }
 
+    /// Returns a new Logger with a given `writer` as default writer.
+    pub fn with_default_writer(self, writer: Box<dyn Writer>) -> Self {
+        Builder {
+            filter: self.filter,
+            default_writer: writer,
+            writers: self.writers,
+        }
+    }
+
     /// Returns a new Logger with a given `target` and `writer`.
     /// `target` is a string that be used as a log target.
     /// `writer` is a struct that implements the `Writer` trait.
