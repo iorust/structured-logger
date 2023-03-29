@@ -13,7 +13,7 @@
 use parking_lot::Mutex;
 use std::{cell::RefCell, collections::BTreeMap, io, io::Write};
 
-use crate::{unix_ms, Key, Value, Writer};
+use crate::{log_failure, Key, Value, Writer};
 /// A Writer implementation that writes logs in JSON format.
 pub struct JSONWriter<W: Write + Sync + Send + 'static>(Mutex<RefCell<Box<W>>>);
 
@@ -37,10 +37,7 @@ impl<W: Write + Sync + Send + 'static> Writer for JSONWriter<W> {
             w.as_mut().write_all(&buf).map_err(io::Error::from)?;
         } else {
             // should never happen, but if it does, we log it.
-            eprintln!(
-                "{{\"level\":\"ERROR\",\"message\":\"failed to write log: writer already borrowed\",\"target\":\"JSONWriter\",\"timestamp\":{}}}",
-                unix_ms(),
-            );
+            log_failure("JSONWriter failed to write log: writer already borrowed");
         }
         Ok(())
     }

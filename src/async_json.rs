@@ -15,7 +15,7 @@
 use std::{collections::BTreeMap, io, io::Write, pin::Pin, sync::Arc};
 use tokio::{io::AsyncWrite, sync::Mutex};
 
-use crate::{unix_ms, Key, Value, Writer};
+use crate::{log_failure, Key, Value, Writer};
 
 /// A Writer implementation that writes logs asynchronous in JSON format.
 pub struct AsyncJSONWriter<W: AsyncWrite + Sync + Send + 'static>(Arc<Mutex<Pin<Box<W>>>>);
@@ -43,10 +43,7 @@ impl<W: AsyncWrite + Sync + Send + 'static> Writer for AsyncJSONWriter<W> {
             let mut w = w.lock().await;
             if let Err(err) = w.as_mut().write_all(&buf).await {
                 // should never happen, but if it does, we log it.
-                eprintln!(
-                    "{{\"level\":\"ERROR\",\"message\":\"failed to write log: {}\",\"target\":\"AsyncJSONWriter\",\"timestamp\":{}}}",
-                    err, unix_ms(),
-                );
+                log_failure(format!("AsyncJSONWriter failed to write log: {}", err).as_str());
             }
         });
         Ok(())

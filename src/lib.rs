@@ -217,6 +217,7 @@ impl Builder {
 }
 
 /// Returns the current unix timestamp in milliseconds.
+#[inline]
 pub fn unix_ms() -> u64 {
     let ts = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -224,9 +225,10 @@ pub fn unix_ms() -> u64 {
     ts.as_millis() as u64
 }
 
-/// Returns the log level from the environment variables.
+/// Returns the log level from the environment variables: `LOG`, `LOG_LEVEL`, `RUST_LOG`, `TRACE` or `DEBUG`.
+/// Default is `INFO`.
 pub fn get_env_level() -> LevelFilter {
-    for var in &["LOG", "LOG_LEVEL"] {
+    for var in &["LOG", "LOG_LEVEL", "RUST_LOG"] {
         if let Ok(level) = env::var(var) {
             if let Ok(level) = level.parse() {
                 return level;
@@ -313,10 +315,7 @@ impl log::Log for Logger {
         if self.enabled(record.metadata()) {
             if let Err(err) = self.try_log(record) {
                 // should never happen, but if it does, we log it.
-                eprintln!(
-                    "{{\"level\":\"ERROR\",\"message\":\"failed to write log: {}\",\"target\":\"Logger\",\"timestamp\":{}}}",
-                     err, unix_ms(),
-                );
+                log_failure(format!("Logger failed to log: {}", err).as_str());
             }
         }
     }
@@ -327,9 +326,28 @@ impl log::Log for Logger {
 struct KeyValueVisitor<'kvs>(BTreeMap<Key<'kvs>, Value<'kvs>>);
 
 impl<'kvs> Visitor<'kvs> for KeyValueVisitor<'kvs> {
+    #[inline]
     fn visit_pair(&mut self, key: Key<'kvs>, value: Value<'kvs>) -> Result<(), Error> {
         self.0.insert(key, value);
         Ok(())
+    }
+}
+
+/// Log failure information as JSON to `stderr` by `eprintln!`.
+/// It is the fallback logging function that is used in case of logging failure for [`Writer`] implementation.
+pub fn log_failure(msg: &str) {
+    match serde_json::to_string(msg) {
+        Ok(msg) => {
+            eprintln!(
+                "{{\"level\":\"ERROR\",\"message\":{},\"target\":\"structured_logger\",\"timestamp\":{}}}",
+                &msg,
+                unix_ms()
+            );
+        }
+        Err(err) => {
+            // should never happen
+            panic!("log_failure serialize error: {}", err)
+        }
     }
 }
 
@@ -371,29 +389,60 @@ fn log_panic(info: &std::panic::PanicInfo<'_>) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tokio::task::JoinSet;
+    use gag::BufferRedirect;
+    use serde_json::{de, value};
+    use std::io::Read;
 
-    #[tokio::test(flavor = "multi_thread", worker_threads = 3)]
-    async fn multiple_threads_works() {
-        Builder::new().init();
+    #[test]
+    fn unix_ms_works() {
+        let now = unix_ms();
+        assert!(now > 1670123456789_u64);
+    }
 
-        let mut set = JoinSet::new();
+    #[test]
+    fn get_env_level_works() {
+        assert_eq!(Level::Info, get_env_level());
 
-        for i in 0..1000 {
-            set.spawn(async move {
-                log::info!("hello {}", i);
-                i
-            });
-        }
+        env::set_var("LOG", "error");
+        assert_eq!(Level::Error, get_env_level());
+        env::remove_var("LOG");
 
-        let mut seen = [false; 1000];
-        while let Some(res) = set.join_next().await {
-            let idx = res.unwrap();
-            seen[idx] = true;
-        }
+        env::set_var("LOG_LEVEL", "Debug");
+        assert_eq!(Level::Debug, get_env_level());
+        env::remove_var("LOG_LEVEL");
 
-        for i in 0..1000 {
-            assert!(seen[i]);
+        env::set_var("RUST_LOG", "WARN");
+        assert_eq!(Level::Warn, get_env_level());
+        env::remove_var("RUST_LOG");
+
+        env::set_var("TRACE", "");
+        assert_eq!(Level::Trace, get_env_level());
+        env::remove_var("TRACE");
+
+        env::set_var("DEBUG", "");
+        assert_eq!(Level::Debug, get_env_level());
+        env::remove_var("DEBUG");
+    }
+
+    #[test]
+    fn log_failure_works() {
+        let cases: Vec<&str> = vec!["", "\"", "hello", "\"hello >", "hello\n", "hello\r"];
+        for case in cases {
+            let buf = BufferRedirect::stderr().unwrap();
+            log_failure(case);
+            let mut msg: String = String::new();
+            buf.into_inner().read_to_string(&mut msg).unwrap();
+            let msg = msg.as_str();
+            // println!("JSON: {}", msg);
+            assert_eq!('\n', msg.chars().last().unwrap());
+
+            let res = de::from_str::<BTreeMap<String, value::Value>>(msg);
+            assert!(res.is_ok());
+            let res = res.unwrap();
+            assert_eq!("ERROR", res.get("level").unwrap());
+            assert_eq!(case, res.get("message").unwrap());
+            assert_eq!("structured_logger", res.get("target").unwrap());
+            assert!(unix_ms() - 999 <= res.get("timestamp").unwrap().as_u64().unwrap());
         }
     }
 }
