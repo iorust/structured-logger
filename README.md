@@ -20,7 +20,7 @@ See examples and the [API documentation] for more.
 * Log panics example: https://github.com/iorust/structured-logger/blob/main/examples/panic_log.rs
 * Async log example: https://github.com/iorust/structured-logger/blob/main/examples/async_log.rs
 
-Simple example:
+Muilti writers example:
 ```rust
 use serde::Serialize;
 use std::{fs::File, io::stdout};

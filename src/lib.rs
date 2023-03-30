@@ -128,7 +128,7 @@ pub mod async_json;
 pub mod json;
 use json::new_writer;
 
-/// A struct to initialize the logger.
+/// A struct to initialize the logger for [`log`] crate.
 pub struct Builder {
     filter: LevelFilter,
     default_writer: Box<dyn Writer>,
@@ -142,7 +142,7 @@ impl Default for Builder {
 }
 
 impl Builder {
-    /// Returns a new Logger with default configuration.
+    /// Returns a [`Builder`] with default configuration.
     /// The default configuration is:
     /// - level filter: get from the environment variable by `get_env_level()`.
     /// - default writer: write to stderr in JSON format.
@@ -154,7 +154,7 @@ impl Builder {
         }
     }
 
-    /// Returns a new Logger with a given level filter.
+    /// Returns a [`Builder`] with a given level filter.
     /// `level` is a string that can be parsed to `log::LevelFilter`.
     /// Such as "OFF", "ERROR", "WARN", "INFO", "DEBUG", "TRACE", ignore ascii case.
     pub fn with_level(level: &str) -> Self {
@@ -165,7 +165,7 @@ impl Builder {
         }
     }
 
-    /// Returns a new Logger with a given `writer` as default writer.
+    /// Returns a [`Builder`] with a given `writer` as default writer.
     pub fn with_default_writer(self, writer: Box<dyn Writer>) -> Self {
         Builder {
             filter: self.filter,
@@ -174,10 +174,10 @@ impl Builder {
         }
     }
 
-    /// Returns a new Logger with a given `target` and `writer`.
+    /// Returns a [`Builder`] with a given `target` and `writer`.
     /// `target` is a string that be used as a log target.
-    /// `writer` is a struct that implements the `Writer` trait.
-    /// You can call this method multiple times to add multiple writers.
+    /// `writer` is a boxed struct that implements the `Writer` trait.
+    /// You can call this method multiple times in order to add multiple writers.
     pub fn with_target_writer(self, target: &'static str, writer: Box<dyn Writer>) -> Self {
         let mut cfg = Builder {
             filter: self.filter,
@@ -188,7 +188,7 @@ impl Builder {
         cfg
     }
 
-    /// Initialize the logger.
+    /// Initialize the logger for [`log`] crate.
     ///
     /// See the [crate level documentation] for more.
     ///
@@ -203,7 +203,7 @@ impl Builder {
             .unwrap_or_else(|err| panic!("failed to initialize the logger: {}", err));
     }
 
-    /// Try to initialize the logger.
+    /// Try to initialize the logger for [`log`] crate.
     ///
     /// Unlike [`Builder::init`] this doesn't panic when the logger fails to initialize.
     /// See the [crate level documentation] for more.
@@ -342,8 +342,8 @@ impl<'kvs> Visitor<'kvs> for KeyValueVisitor<'kvs> {
     }
 }
 
-/// Log failure information as JSON to `stderr` by `eprintln!`.
-/// It is the fallback logging function that is used in case of logging failure for [`Writer`] implementation.
+/// A fallback logging function that is used in case of logging failure in [`Writer`] implementation.
+/// It will write failure information as JSON to `stderr`.
 pub fn log_failure(msg: &str) {
     match serde_json::to_string(msg) {
         Ok(msg) => {
