@@ -4,8 +4,8 @@
 //! # Structured Logger
 //!
 //! A logging implementation for the [`log`] crate that logs structured values
-//! either synchronous or asynchronous, as JSON, CBOR, or any other format,
-//! into a file, stderr, stdout, or any other destination.
+//! either synchronous or asynchronous, in JSON, CBOR, or any other format,
+//! to a file, stderr, stdout, or any other destination.
 //! To initialize the logger use the [`Builder`] struct.
 //! It is inspired by [std-logger](https://github.com/Thomasdezeeuw/std-logger).
 //!
@@ -44,7 +44,7 @@
 //!         .open("app.log")
 //!         .unwrap();
 //!
-//!     // Builder::with_level("debug")
+//!     // or Builder::with_level("debug")
 //!     Builder::new()
 //!         // Optional: set a specific writer (format to JSON, write to stdout) for target "api".
 //!         .with_target_writer("api", new_writer(stdout()))
@@ -343,7 +343,7 @@ impl<'kvs> Visitor<'kvs> for KeyValueVisitor<'kvs> {
 }
 
 /// A fallback logging function that is used in case of logging failure in [`Writer`] implementation.
-/// It will write failure information as JSON to `stderr`.
+/// It will write failure information in JSON to `stderr`.
 pub fn log_failure(msg: &str) {
     match serde_json::to_string(msg) {
         Ok(msg) => {

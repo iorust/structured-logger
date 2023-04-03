@@ -7,7 +7,7 @@
 [![Docs.rs](https://img.shields.io/docsrs/structured-logger?label=docs.rs)](https://docs.rs/structured-logger)
 [![Latest Version](https://img.shields.io/crates/v/structured-logger.svg)](https://crates.io/crates/structured-logger)
 
-A logging implementation for the log crate that logs structured values either synchronous or asynchronous, as JSON, CBOR, or any other format, into a file, stderr, stdout, or any other destination.
+A logging implementation for the log crate that logs structured values either synchronous or asynchronous, in JSON, CBOR, or any other format, to a file, stderr, stdout, or any other destination.
 
 It is inspired by [std-logger](https://github.com/Thomasdezeeuw/std-logger).
 
@@ -35,7 +35,7 @@ fn main() {
         .open("app.log")
         .unwrap();
 
-    // Builder::with_level("debug")
+    // or Builder::with_level("debug")
     Builder::new()
         // Optional: set a specific writer (format to JSON, write to stdout) for target "api".
         .with_target_writer("api", new_writer(stdout()))

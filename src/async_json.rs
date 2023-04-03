@@ -4,7 +4,7 @@
 //! # Async JSON Writer Implementation
 //!
 //! A [`Writer`] implementation that logs structured values
-//! asynchronous as JSON into a file, stderr, stdout, or any other destination, base on [`tokio`].
+//! asynchronous in JSON format to a file, stderr, stdout, or any other destination, base on [`tokio`].
 //! To create a `Box<dyn Writer>` use the [`new_writer`] function.
 //!
 //! Example: <https://github.com/iorust/structured-logger/blob/main/examples/async_log.rs>

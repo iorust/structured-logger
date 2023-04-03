@@ -11,7 +11,7 @@ fn main() {
         .open("app.log")
         .unwrap();
 
-    // Builder::with_level("debug")
+    // or Builder::with_level("debug")
     Builder::new()
         // Optional: set a specific writer (format to JSON, write to stdout) for target "api".
         .with_target_writer("api", new_writer(stdout()))
