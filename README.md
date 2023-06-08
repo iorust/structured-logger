@@ -37,10 +37,10 @@ fn main() {
 
     // or Builder::with_level("debug")
     Builder::new()
-        // Optional: set a specific writer (format to JSON, write to stdout) for target "api".
-        .with_target_writer("api", new_writer(stdout()))
-        // Optional: set a specific writer (format to JSON, write to app.log file) for target "file".
-        .with_target_writer("file", new_writer(log_file))
+        // Optional: set a specific writer (format to JSON, write to stdout) for target starts with "api"..
+        .with_target_writer("api*", new_writer(stdout()))
+        // Optional: set a specific writer (format to JSON, write to app.log file) for target "file" and "db".
+        .with_target_writer("file,db", new_writer(log_file))
         .init();
 
     let kv = ContextLog {
