@@ -12,6 +12,9 @@
 //! This crate provides only a logging implementation. To do actual logging use
 //! the [`log`] crate and it's various macros.
 //!
+//! ## Limiting logging targets
+//! You can use [`Builder::with_target_writer`] method to log messages related specific target to a specific writer.
+//!
 //! ## Crate features
 //!
 //! This crate has three features:
@@ -46,10 +49,10 @@
 //!
 //!     // or Builder::with_level("debug")
 //!     Builder::new()
-//!         // Optional: set a specific writer (format to JSON, write to stdout) for target "api".
-//!         .with_target_writer("api", new_writer(stdout()))
-//!         // Optional: set a specific writer (format to JSON, write to app.log file) for target "file".
-//!         .with_target_writer("file", new_writer(log_file))
+//!         // Optional: set a specific writer (format to JSON, write to stdout) for target starts with "api".
+//!         .with_target_writer("api*", new_writer(stdout()))
+//!         // Optional: set a specific writer (format to JSON, write to app.log file) for target "file" and "db".
+//!         .with_target_writer("file,db", new_writer(log_file))
 //!         .init();
 //!
 //!     let kv = ContextLog {
@@ -132,7 +135,7 @@ use json::new_writer;
 pub struct Builder {
     filter: LevelFilter,
     default_writer: Box<dyn Writer>,
-    writers: BTreeMap<&'static str, Box<dyn Writer>>,
+    writers: Vec<(Target, Box<dyn Writer>)>,
 }
 
 impl Default for Builder {
@@ -150,7 +153,7 @@ impl Builder {
         Builder {
             filter: get_env_level(),
             default_writer: new_writer(io::stderr()),
-            writers: BTreeMap::new(),
+            writers: Vec::new(),
         }
     }
 
@@ -161,7 +164,7 @@ impl Builder {
         Builder {
             filter: level.parse().unwrap_or(LevelFilter::Info),
             default_writer: new_writer(io::stderr()),
-            writers: BTreeMap::new(),
+            writers: Vec::new(),
         }
     }
 
@@ -174,17 +177,24 @@ impl Builder {
         }
     }
 
-    /// Returns a [`Builder`] with a given `target` and `writer`.
-    /// `target` is a string that be used as a log target.
+    /// Returns a [`Builder`] with a given `targets` pattern and `writer`.
+    /// `targets` is a pattern that be used to test log target, if true, the log will be written to the `writer`.
     /// `writer` is a boxed struct that implements the `Writer` trait.
     /// You can call this method multiple times in order to add multiple writers.
-    pub fn with_target_writer(self, target: &'static str, writer: Box<dyn Writer>) -> Self {
+    ///
+    /// `targets` pattern examples:
+    /// - `"api"`: match the target "api".
+    /// - `"api,db"`: match the target "api" or "db".
+    /// - `"api*,db"`: match the target "db", "api", "api::v1", "api::v2", etc.
+    /// - `"*"`: match all targets.
+    pub fn with_target_writer(self, targets: &str, writer: Box<dyn Writer>) -> Self {
         let mut cfg = Builder {
             filter: self.filter,
             default_writer: self.default_writer,
             writers: self.writers,
         };
-        cfg.writers.insert(target, writer);
+
+        cfg.writers.push((Target::from(targets), writer));
         cfg
     }
 
@@ -214,7 +224,11 @@ impl Builder {
         let logger = Box::new(Logger {
             filter: self.filter,
             default_writer: self.default_writer,
-            writers: self.writers,
+            writers: self
+                .writers
+                .into_iter()
+                .map(|(t, w)| (InnerTarget::from(t), w))
+                .collect(),
         });
         log::set_boxed_logger(logger)?;
         log::set_max_level(self.filter);
@@ -257,16 +271,18 @@ pub fn get_env_level() -> LevelFilter {
 struct Logger {
     filter: LevelFilter,
     default_writer: Box<dyn Writer>,
-    writers: BTreeMap<&'static str, Box<dyn Writer>>,
+    writers: Box<[(InnerTarget, Box<dyn Writer>)]>,
 }
 
 impl Logger {
     fn get_writer(&self, target: &str) -> &dyn Writer {
-        if let Some(writer) = self.writers.get(target) {
-            writer.as_ref()
-        } else {
-            self.default_writer.as_ref()
+        for t in self.writers.iter() {
+            if t.0.test(target) {
+                return t.1.as_ref();
+            }
         }
+
+        self.default_writer.as_ref()
     }
 
     fn try_log(&self, record: &Record) -> Result<(), io::Error> {
@@ -330,6 +346,63 @@ impl log::Log for Logger {
     }
 
     fn flush(&self) {}
+}
+
+struct Target {
+    all: bool,
+    prefix: Vec<String>,
+    items: Vec<String>,
+}
+
+impl Target {
+    fn from(targets: &str) -> Self {
+        let mut target = Target {
+            all: false,
+            prefix: Vec::new(),
+            items: Vec::new(),
+        };
+        for t in targets.split(',') {
+            let t = t.trim();
+            if t == "*" {
+                target.all = true;
+                break;
+            } else if t.ends_with('*') {
+                target.prefix.push(t.trim_end_matches('*').to_string());
+            } else {
+                target.items.push(t.to_string());
+            }
+        }
+        target
+    }
+}
+
+struct InnerTarget {
+    all: bool,
+    prefix: Box<[Box<str>]>,
+    items: Box<[Box<str>]>,
+}
+
+impl InnerTarget {
+    fn from(t: Target) -> Self {
+        InnerTarget {
+            all: t.all,
+            prefix: t.prefix.into_iter().map(|s| s.into_boxed_str()).collect(),
+            items: t.items.into_iter().map(|s| s.into_boxed_str()).collect(),
+        }
+    }
+
+    fn test(&self, target: &str) -> bool {
+        if self.all {
+            return true;
+        }
+        if self.items.iter().any(|i| i.as_ref() == target) {
+            return true;
+        }
+        if self.prefix.iter().any(|p| target.starts_with(p.as_ref())) {
+            return true;
+        }
+        false
+    }
 }
 
 struct KeyValueVisitor<'kvs>(BTreeMap<Key<'kvs>, Value<'kvs>>);
@@ -431,6 +504,34 @@ mod tests {
         env::set_var("DEBUG", "");
         assert_eq!(Level::Debug, get_env_level());
         env::remove_var("DEBUG");
+    }
+
+    #[test]
+    fn target_works() {
+        let target = InnerTarget::from(Target::from("*"));
+        assert!(target.test(""));
+        assert!(target.test("api"));
+        assert!(target.test("hello"));
+
+        let target = InnerTarget::from(Target::from("api*, file,db"));
+        assert!(!target.test(""));
+        assert!(!target.test("apx"));
+        assert!(!target.test("err"));
+        assert!(!target.test("dbx"));
+        assert!(target.test("api"));
+        assert!(target.test("apiinfo"));
+        assert!(target.test("apierr"));
+        assert!(target.test("file"));
+        assert!(target.test("db"));
+
+        let target = InnerTarget::from(Target::from("api*, file, *"));
+        assert!(target.test(""));
+        assert!(target.test("apx"));
+        assert!(target.test("err"));
+        assert!(target.test("api"));
+        assert!(target.test("apiinfo"));
+        assert!(target.test("apierr"));
+        assert!(target.test("error"));
     }
 
     #[test]
