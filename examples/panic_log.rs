@@ -1,7 +1,7 @@
-fn main() {
-    use log::info;
-    use structured_logger::Builder;
+use log::info;
+use structured_logger::Builder;
 
+fn main() {
     // Initialize the logger.
     Builder::new().init();
 
