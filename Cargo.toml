@@ -1,6 +1,6 @@
 [package]
 name = "structured-logger"
-version = "1.0.2"
+version = "1.0.3"
 edition = "2018"
 description = """
 A logging implementation for the log crate that logs structured values either synchronous or asynchronous, as JSON, CBOR, or any other format, into a file, stderr, stdout, or any other destination.
@@ -26,13 +26,13 @@ default = ["log-panic"]
 log-panic = []
 
 [dependencies]
-log = { version = "~0.4", features = [
+log = { version = "0.4", features = [
   "kv_unstable_serde",
 ], default-features = false }
-parking_lot = { version = "~0.12", optional = false }
-serde = { version = "~1.0", features = ["derive"], default-features = false }
-serde_json = { version = "~1.0", features = ["std"], default-features = false }
-tokio = { version = "~1.29", features = [
+parking_lot = { version = "0.12", optional = false }
+serde = { version = "1.0", features = ["derive"], default-features = false }
+serde_json = { version = "1.0", features = ["std"], default-features = false }
+tokio = { version = "1.29", features = [
   "io-std",
   "io-util",
   "parking_lot",
@@ -41,5 +41,5 @@ tokio = { version = "~1.29", features = [
 ], default-features = false }
 
 [dev-dependencies]
-tokio = { version = "~1.29", features = ["full"] }
-gag = { version = "~1.0" }
+tokio = { version = "1.29", features = ["full"] }
+gag = { version = "1.0" }

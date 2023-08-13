@@ -20,12 +20,13 @@ See examples and the [API documentation] for more.
 Simple example:
 ```rust
 use serde::Serialize;
-use structured_logger::{json::new_writer, unix_ms, Builder};
+use structured_logger::{async_json::new_writer, unix_ms, Builder};
 
-fn main() {
+#[tokio::main]
+async fn main() {
     // Initialize the logger.
     Builder::with_level("info")
-        .with_target_writer("*", new_writer(std::io::stdout()))
+        .with_target_writer("*", new_writer(tokio::io::stdout()))
         .init();
 
     let kv = ContextLog {
