@@ -175,6 +175,23 @@ impl Builder {
         cfg
     }
 
+    /// Builds the logger without registering it in the [`log`] crate.
+    ///
+    /// Unlike [`Builder::init`] and [`Builder::try_init`] this does not register
+    /// the logger into the [`log`] system, allowing it to be combined with
+    /// other logging crates.
+    pub fn build(self) -> impl log::Log {
+        Logger {
+            filter: self.filter,
+            default_writer: self.default_writer,
+            writers: self
+                .writers
+                .into_iter()
+                .map(|(t, w)| (InnerTarget::from(t), w))
+                .collect(),
+        }
+    }
+
     /// Initialize the logger for [`log`] crate.
     ///
     /// See the [crate level documentation] for more.
@@ -198,17 +215,11 @@ impl Builder {
     /// [`init`]: fn.init.html
     /// [crate level documentation]: index.html
     pub fn try_init(self) -> Result<(), SetLoggerError> {
-        let logger = Box::new(Logger {
-            filter: self.filter,
-            default_writer: self.default_writer,
-            writers: self
-                .writers
-                .into_iter()
-                .map(|(t, w)| (InnerTarget::from(t), w))
-                .collect(),
-        });
+        let filter = self.filter;
+        let logger = Box::new(self.build());
+
         log::set_boxed_logger(logger)?;
-        log::set_max_level(self.filter);
+        log::set_max_level(filter);
 
         #[cfg(feature = "log-panic")]
         std::panic::set_hook(Box::new(log_panic));
