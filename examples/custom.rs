@@ -34,7 +34,7 @@ fn main() {
         status = 200_u16,
         start = unix_ms(),
         elapsed = 10_u64,
-        kv = log::as_serde!(kv);
+        kv:serde = kv;
         "",
     );
     // This log will be written to stdout:
@@ -46,7 +46,7 @@ fn main() {
         status = 200_u16,
         start = unix_ms(),
         elapsed = 10_u64,
-        kv = log::as_serde!(kv);
+        kv:serde = kv;
         "",
     );
     // This log will be written to file "app.log":

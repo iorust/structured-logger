@@ -38,7 +38,7 @@ fn it_works() {
             method = "GET",
             path = "/hello",
             status = 200_u16,
-            kv = log::as_serde!(kv);
+            kv:serde = kv;
             "",
         );
 

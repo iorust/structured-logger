@@ -30,11 +30,11 @@ impl<W: Write + Sync + Send + 'static> Writer for JSONWriter<W> {
         let mut buf = Vec::with_capacity(256);
         serde_json::to_writer(&mut buf, value).map_err(io::Error::from)?;
         // must write the LINE FEED character.
-        buf.write_all(b"\n").map_err(io::Error::from)?;
+        buf.write_all(b"\n")?;
 
         let w = self.0.lock();
         if let Ok(mut w) = w.try_borrow_mut() {
-            w.as_mut().write_all(&buf).map_err(io::Error::from)?;
+            w.as_mut().write_all(&buf)?;
         } else {
             // should never happen, but if it does, we log it.
             log_failure("JSONWriter failed to write log: writer already borrowed");

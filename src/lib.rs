@@ -59,7 +59,7 @@
 //!         status = 200_u16,
 //!         start = unix_ms(),
 //!         elapsed = 10_u64,
-//!         kv = log::as_serde!(kv);
+//!         kv:serde = kv;
 //!         "",
 //!     );
 //!     // This log will be written to stdout:
@@ -80,10 +80,8 @@
 #![doc(html_root_url = "https://docs.rs/structured-logger/latest")]
 #![allow(clippy::needless_doctest_main)]
 
-use log::{
-    kv::Error, kv::Key, kv::Value, kv::Visitor, Level, LevelFilter, Metadata, Record,
-    SetLoggerError,
-};
+use json::new_writer;
+use log::{kv::*, Level, LevelFilter, Metadata, Record, SetLoggerError};
 use std::{
     collections::BTreeMap,
     env, io,
@@ -106,7 +104,6 @@ pub trait Writer {
 
 pub mod async_json;
 pub mod json;
-use json::new_writer;
 
 /// A struct to initialize the logger for [`log`] crate.
 pub struct Builder {
@@ -214,6 +211,11 @@ impl Builder {
         std::panic::set_hook(Box::new(log_panic));
         Ok(())
     }
+}
+
+/// Initializes the logger for [`log`] crate with default configuration.
+pub fn init() {
+    Builder::new().init();
 }
 
 /// Returns the current unix timestamp in milliseconds.
@@ -384,7 +386,7 @@ impl InnerTarget {
 
 struct KeyValueVisitor<'kvs>(BTreeMap<Key<'kvs>, Value<'kvs>>);
 
-impl<'kvs> Visitor<'kvs> for KeyValueVisitor<'kvs> {
+impl<'kvs> VisitSource<'kvs> for KeyValueVisitor<'kvs> {
     #[inline]
     fn visit_pair(&mut self, key: Key<'kvs>, value: Value<'kvs>) -> Result<(), Error> {
         self.0.insert(key, value);
@@ -412,7 +414,7 @@ pub fn log_failure(msg: &str) {
 
 /// Panic hook that logs the panic using [`log::error!`].
 #[cfg(feature = "log-panic")]
-fn log_panic(info: &std::panic::PanicInfo<'_>) {
+fn log_panic(info: &std::panic::PanicHookInfo<'_>) {
     use std::backtrace::Backtrace;
     use std::thread;
 
@@ -422,7 +424,7 @@ fn log_panic(info: &std::panic::PanicInfo<'_>) {
     let backtrace = Backtrace::force_capture();
 
     let key_values = [
-        ("backtrace", Value::capture_display(&backtrace)),
+        ("backtrace", Value::from_debug(&backtrace)),
         ("thread_name", Value::from(thread_name)),
     ];
     let key_values = key_values.as_slice();

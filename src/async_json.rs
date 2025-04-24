@@ -33,7 +33,7 @@ impl<W: AsyncWrite + Sync + Send + 'static> Writer for AsyncJSONWriter<W> {
         let mut buf = Vec::with_capacity(256);
         serde_json::to_writer(&mut buf, value).map_err(io::Error::from)?;
         // must write the LINE FEED character.
-        buf.write_all(b"\n").map_err(io::Error::from)?;
+        buf.write_all(b"\n")?;
 
         let w = self.0.clone();
         tokio::spawn(async move {

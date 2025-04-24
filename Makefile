@@ -10,6 +10,9 @@ lint:
 	@cargo fmt
 	@cargo clippy --all-targets --all-features
 
+fix:
+	@cargo clippy --fix --workspace --tests
+
 test:
 	@cargo fmt
 	@cargo clippy --all-targets --all-features
