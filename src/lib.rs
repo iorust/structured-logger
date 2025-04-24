@@ -44,6 +44,9 @@
 //!         .with_target_writer("*", new_writer(tokio::io::stdout()))
 //!         .init();
 //!
+//!     // Or use the default:
+//!     // structured_logger::init();
+//!
 //!     let kv = ContextLog {
 //!         uid: "user123".to_string(),
 //!         action: "upate_book".to_string(),
