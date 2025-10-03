@@ -438,7 +438,7 @@ fn log_panic(info: &std::panic::PanicHookInfo<'_>) {
     let backtrace = Backtrace::force_capture();
 
     let key_values = [
-        ("backtrace", Value::from_debug(&backtrace)),
+        ("backtrace", Value::from_display(&backtrace)),
         ("thread_name", Value::from(thread_name)),
     ];
     let key_values = key_values.as_slice();
