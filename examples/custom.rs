@@ -17,6 +17,7 @@ fn main() {
         .with_target_writer("api*", new_writer(stdout()))
         // Optional: set a specific writer (format to JSON, write to app.log file) for target "file" and "db".
         .with_target_writer("file,db", new_writer(log_file))
+        .with_msg_field() // use "msg" field for log message instead of "message"
         .init();
 
     let kv = ContextLog {

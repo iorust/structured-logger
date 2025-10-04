@@ -113,6 +113,7 @@ pub struct Builder {
     filter: LevelFilter,
     default_writer: Box<dyn Writer>,
     writers: Vec<(Target, Box<dyn Writer>)>,
+    with_msg: bool,
 }
 
 impl Default for Builder {
@@ -131,6 +132,7 @@ impl Builder {
             filter: get_env_level(),
             default_writer: new_writer(io::stderr()),
             writers: Vec::new(),
+            with_msg: false,
         }
     }
 
@@ -142,6 +144,7 @@ impl Builder {
             filter: level.parse().unwrap_or(LevelFilter::Info),
             default_writer: new_writer(io::stderr()),
             writers: Vec::new(),
+            with_msg: false,
         }
     }
 
@@ -151,6 +154,7 @@ impl Builder {
             filter: self.filter,
             default_writer: writer,
             writers: self.writers,
+            with_msg: false,
         }
     }
 
@@ -169,10 +173,17 @@ impl Builder {
             filter: self.filter,
             default_writer: self.default_writer,
             writers: self.writers,
+            with_msg: false,
         };
 
         cfg.writers.push((Target::from(targets), writer));
         cfg
+    }
+
+    /// Use "msg" field for log message instead of "message".
+    pub fn with_msg_field(mut self) -> Self {
+        self.with_msg = true;
+        self
     }
 
     /// Builds the logger without registering it in the [`log`] crate.
@@ -189,6 +200,11 @@ impl Builder {
                 .into_iter()
                 .map(|(t, w)| (InnerTarget::from(t), w))
                 .collect(),
+            message_field: if self.with_msg {
+                "msg".to_string()
+            } else {
+                "message".to_string()
+            },
         }
     }
 
@@ -265,6 +281,7 @@ struct Logger {
     filter: LevelFilter,
     default_writer: Box<dyn Writer>,
     writers: Box<[(InnerTarget, Box<dyn Writer>)]>,
+    message_field: String,
 }
 
 impl Logger {
@@ -288,13 +305,14 @@ impl Logger {
             .insert(Key::from("target"), Value::from(record.target()));
 
         let args = record.args();
-        let msg: String;
-        if let Some(msg) = args.as_str() {
-            visitor.0.insert(Key::from("message"), Value::from(msg));
-        } else {
-            msg = args.to_string();
-            visitor.0.insert(Key::from("message"), Value::from(&msg));
-        }
+        visitor.0.insert(
+            Key::from(self.message_field.as_str()),
+            if let Some(msg) = args.as_str() {
+                Value::from(msg)
+            } else {
+                Value::from_display(args)
+            },
+        );
 
         let level = record.level();
         visitor
