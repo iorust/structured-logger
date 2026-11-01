@@ -27,7 +27,7 @@ log-panic = []
 
 [dependencies]
 log = { version = "0.4", features = ["kv_serde"], default-features = false }
-parking_lot = { version = "0.12", optional = false }
+parking_lot = { version = "0.13", optional = false }
 serde = { version = "1", features = ["derive"], default-features = false }
 serde_json = { version = "1", features = ["std"], default-features = false }
 tokio = { version = "1", features = [
